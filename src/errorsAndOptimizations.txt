@@ -1,0 +1,164 @@
+pub enum List {
+    Empty,
+    Elem(i32, List)
+}
+
+error[E0072]: recursive type `first::List` has infinite size
+ --> src/first.rs:4:1
+  |
+4 | pub enum List {
+  | ^^^^^^^^^^^^^ recursive type has infinite size
+5 |     Empty,
+6 |     Elem(i32, List),
+  |               ---- recursive without indirection
+  |
+  = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `first::List` representable
+
+pub enum List {
+    Empty,
+    Elem(i32, Box<List>)
+}
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+pub fn push(&mut self, elem: i32) {
+    let new_node = Box::new(Node {
+        elem: elem,
+        next: self.head,
+    });
+
+error[E0507]: cannot move out of borrowed content
+  --> src/first.rs:19:19
+   |
+19 |             next: self.head,
+   |                   ^^^^^^^^^ cannot move out of borrowed content
+
+use std::mem;
+pub fn push(&mut self, elem: i32) {
+    let new_node = Box::new(Node {
+        elem: elem,
+        next: mem::replace(&mut self.head, Link::Empty),
+    });
+
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+pub fn pop(&mut self) -> Option<i32> {
+    match self.head {
+        Link::Empty => {
+            .....
+
+error[E0507]: cannot move out of borrowed content
+  --> src/first.rs:28:15
+   |
+28 |         match self.head {
+   |               ^^^^^^^^^
+   |               |
+   |               cannot move out of borrowed content
+   |               help: consider borrowing here: `&self.head`
+
+pub fn pop(&mut self) -> Option<i32> {
+    match &self.head {
+        Link::Empty => {
+            ....
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+match &self.head {
+    Link::Empty => {
+        result = None;
+    }
+    Link::More(node) => {
+        result = Some(node.elem);
+        self.head = node.next;
+    }
+};
+
+error[E0507]: cannot move out of borrowed content
+  --> src/first.rs:35:29
+   |
+35 |                 self.head = node.next;
+   |                             ^^^^^^^^^ cannot move out of borrowed content
+
+match mem::replace(&mut self.head, Link::Empty) {
+    Link::Empty => {
+        result = None;
+    }
+    Link::More(node) => {
+        result = Some(node.elem);
+        self.head = node.next;
+    }
+};
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+next: mem::replace(&mut self.head, Link::Empty),
+next: self.head.take(),
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+match option { None => None, Some(x) => Some(y) }
+
+match self.head.take() {
+    None => None,
+    Some(node) => {
+        self.head = node.next;
+        Some(node.elem)
+    }
+}
+
+self.head.take().map(|node| {
+    self.head = node.next;
+    node.elem
+})
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+pub struct List<T> {
+    head: Link<T>,
+}
+
+impl List {
+    pub fn new()
+
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> src/second.rs:14:6
+   |
+14 | impl List {
+   |      ^^^^ expected 1 type argument
+
+impl<T> List<T> {
+    pub fn new()
+
+======================================================================================================================================================
+======================================================================================================================================================
+
+pub fn peek(&self) -> Option<&T> {
+    self.head.map(|node| {
+        &node.elem
+    })
+}
+
+error[E0515]: cannot return reference to local data `node.elem`
+  --> src/second.rs:37:13
+   |
+37 |             &node.elem
+   |             ^^^^^^^^^^ returns a reference to data owned by the current function
+
+error[E0507]: cannot move out of borrowed content
+  --> src/second.rs:36:9
+   |
+36 |         self.head.map(|node| {
+   |         ^^^^^^^^^ cannot move out of borrowed content
+
+pub fn peek(&self) -> Option<&T> {
+    self.head.as_ref().map(|node| {
+        &node.elem
+    })
+}
